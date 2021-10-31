@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"errors"
+	"flag"
 	"fmt"
 	"io/fs"
 	"io/ioutil"
@@ -15,21 +16,27 @@ import (
 )
 
 var (
-	snapshotInputPath  = "./snapshot_dataset"
-	snapshotOutputPath = "./snapshot_dump"
+	snapshotInputPath  = flag.String("input", "", "Path to the snapshot dataset directory")
+	snapshotOutputPath = flag.String("output", "./snapshot_dump", "Path to the snapshot output directory")
 )
 
 func main() {
+	flag.Parse()
+
+	if *snapshotInputPath == "" {
+		log.Fatal("no \"input\" argument was provided")
+	}
+
 	// Создание директории для JSON файлов, если её ещё не существует
-	if _, err := os.Stat(snapshotOutputPath); os.IsNotExist(err) {
-		if err := os.Mkdir(snapshotOutputPath, 0777); err != nil {
+	if _, err := os.Stat(*snapshotOutputPath); os.IsNotExist(err) {
+		if err := os.Mkdir(*snapshotOutputPath, 0777); err != nil {
 			log.Fatalf("unexpected error during directory creation: %s", err)
 		}
 	}
 
-	// Строки 32-67 – чтение json файлов из датасета с последующим "вытягиванием" нужных свойств
+	// Строки 39-72 – чтение json файлов из датасета с последующим "вытягиванием" нужных свойств
 	// и их записью в отдельный CSV файл
-	datasetFiles, err := readDirFiles(snapshotInputPath)
+	datasetFiles, err := readDirFiles(*snapshotInputPath)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -37,7 +44,7 @@ func main() {
 	sortFilesByName(datasetFiles)
 
 	for _, datasetFile := range datasetFiles {
-		inputFilepath := path.Join(snapshotInputPath, datasetFile.Name())
+		inputFilepath := path.Join(*snapshotInputPath, datasetFile.Name())
 		dataset := &snapshotDataset{}
 		if err := readJSONFile(inputFilepath, &dataset); err != nil {
 			log.Fatal(err)
@@ -45,18 +52,16 @@ func main() {
 
 		var snapshotEntries []snapshotEntry
 		for _, datasetEntry := range dataset.Data {
-			func() {
-				snapshotEntries = append(snapshotEntries, snapshotEntry{
-					Motion:      datasetEntry.Motion,
-					Sound:       datasetEntry.Sound,
-					Illuminance: datasetEntry.Illuminance,
-					Temperature: datasetEntry.Temperature,
-				})
-			}()
+			snapshotEntries = append(snapshotEntries, snapshotEntry{
+				Motion:      datasetEntry.Motion,
+				Sound:       datasetEntry.Sound,
+				Illuminance: datasetEntry.Illuminance,
+				Temperature: datasetEntry.Temperature,
+			})
 		}
 
 		snapshot := &snapshot{snapshotEntries}
-		outputFilename := path.Join(snapshotOutputPath, basename(datasetFile.Name()))
+		outputFilename := path.Join(*snapshotOutputPath, basename(datasetFile.Name()))
 		if err := writeJSONFile(outputFilename+".json", &snapshot); err != nil {
 			log.Fatal(err)
 		}
@@ -66,13 +71,13 @@ func main() {
 		}
 	}
 
-	// Строки 70-87 – чтение данных из JSON файлов, созданных ранее
-	snapshotFileEntries, _ := readDirFiles(snapshotOutputPath)
+	// Строки 75-92 – чтение данных из JSON файлов, созданных ранее
+	snapshotFileEntries, _ := readDirFiles(*snapshotOutputPath)
 	for _, fileEntry := range snapshotFileEntries {
 		if strings.Contains(fileEntry.Name(), ".json") {
 			fmt.Printf("========%s========\n", fileEntry.Name())
 
-			filepath := path.Join(snapshotOutputPath, fileEntry.Name())
+			filepath := path.Join(*snapshotOutputPath, fileEntry.Name())
 
 			var snapshot snapshot
 			if err := readJSONFile(filepath, &snapshot); err != nil {

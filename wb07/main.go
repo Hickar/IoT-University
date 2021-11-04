@@ -15,6 +15,8 @@ import (
 	"strings"
 )
 
+// Парсинг значений аргументов командной строки, в которых указан путь
+// до директории с входными файлами и путь до директории выходных файлов
 var (
 	snapshotInputPath  = flag.String("input", "", "Path to the snapshot dataset directory")
 	snapshotOutputPath = flag.String("output", "./snapshot_dump", "Path to the snapshot output directory")
@@ -34,7 +36,7 @@ func main() {
 		}
 	}
 
-	// Строки 39-72 – чтение json файлов из датасета с последующим "вытягиванием" нужных свойств
+	// Строки 41-74 – чтение json файлов из датасета с последующим "вытягиванием" нужных свойств
 	// и их записью в отдельный CSV файл
 	datasetFiles, err := readDirFiles(*snapshotInputPath)
 	if err != nil {
@@ -71,7 +73,7 @@ func main() {
 		}
 	}
 
-	// Строки 75-92 – чтение данных из JSON файлов, созданных ранее
+	// Строки 77-94 – чтение данных из JSON файлов, созданных ранее
 	snapshotFileEntries, _ := readDirFiles(*snapshotOutputPath)
 	for _, fileEntry := range snapshotFileEntries {
 		if strings.Contains(fileEntry.Name(), ".json") {
